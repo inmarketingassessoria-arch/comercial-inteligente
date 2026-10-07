@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel de vendas</title>
+<style>
+  /* Identidade: troque estas variáveis pelas cores da marca */
+  :root {
+    --fundo: #FAF7F2;
+    --superficie: #FFFFFF;
+    --texto: #1F1B18;
+    --texto-suave: #6B635C;
+    --linha: #E6DED4;
+    --destaque: #7B2D3A;
+    --destaque-suave: #F3E7E3;
+    --apoio: #C9A96E;
+    --positivo: #2F6B4F;
+    --alerta: #A4501E;
+    --fonte-titulo: Georgia, "Times New Roman", serif;
+    --fonte-texto: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fundo); color: var(--texto); font: 15px/1.5 var(--fonte-texto); }
+  header { padding: 20px 24px 0; max-width: 1280px; margin: 0 auto; }
+  h1 { font: italic 600 28px/1.2 var(--fonte-titulo); margin: 0 0 4px; }
+  .sub { color: var(--texto-suave); font-size: 13px; }
+  .barra { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 14px 0; }
+  .aviso { background: var(--destaque-suave); border: 1px solid var(--linha); padding: 10px 14px; border-radius: 10px; font-size: 13px; flex: 1 1 320px; }
+  .aviso.ok { background: #EAF3EE; }
+  button, select, input, textarea { font: inherit; }
+  button { background: var(--destaque); color: #fff; border: 0; border-radius: 8px; padding: 8px 14px; cursor: pointer; }
+  button.leve { background: transparent; color: var(--destaque); border: 1px solid var(--destaque); }
+  button:disabled { opacity: .5; cursor: default; }
+  nav { display: flex; gap: 4px; border-bottom: 1px solid var(--linha); max-width: 1280px; margin: 0 auto; padding: 0 24px; overflow-x: auto; }
+  nav button { background: transparent; color: var(--texto-suave); border-radius: 0; border-bottom: 2px solid transparent; padding: 10px 14px; white-space: nowrap; }
+  nav button.ativa { color: var(--texto); border-bottom-color: var(--destaque); }
+  main { max-width: 1280px; margin: 0 auto; padding: 20px 24px 60px; }
+  .aba { display: none; } .aba.ativa { display: block; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .kpi { background: var(--superficie); border: 1px solid var(--linha); border-radius: 12px; padding: 14px 16px; }
+  .kpi .rotulo { color: var(--texto-suave); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  .kpi .valor { font: 600 24px/1.3 var(--fonte-titulo); margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .kpi .nota { font-size: 12px; color: var(--texto-suave); }
+  .progresso { height: 6px; background: var(--linha); border-radius: 4px; margin-top: 8px; overflow: hidden; }
+  .progresso div { height: 100%; background: var(--destaque); }
+  .cartao { background: var(--superficie); border: 1px solid var(--linha); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .cartao h2 { font: 600 18px/1.3 var(--fonte-titulo); margin: 0 0 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--linha); vertical-align: top; }
+  th { color: var(--texto-suave); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .tabela-rolagem { overflow-x: auto; }
+  .vazio { color: var(--texto-suave); font-style: italic; padding: 8px 0; }
+  .atrasado { color: var(--alerta); font-weight: 600; }
+  .funil { display: grid; grid-template-columns: repeat(8, minmax(170px, 1fr)); gap: 10px; overflow-x: auto; padding-bottom: 8px; }
+  .coluna { background: var(--superficie); border: 1px solid var(--linha); border-radius: 12px; padding: 10px; min-height: 240px; }
+  .coluna.sobre { outline: 2px dashed var(--destaque); }
+  .coluna h3 { font-size: 13px; margin: 0 0 8px; display: flex; justify-content: space-between; color: var(--texto-suave); text-transform: uppercase; letter-spacing: .03em; }
+  .negocio { background: var(--fundo); border: 1px solid var(--linha); border-radius: 10px; padding: 8px 10px; margin-bottom: 8px; cursor: grab; font-size: 13px; }
+  .negocio strong { display: block; font-size: 14px; }
+  .negocio .meta { color: var(--texto-suave); }
+  .etiqueta { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 99px; background: var(--destaque-suave); color: var(--destaque); }
+  .etiqueta.A { background: #EAF3EE; color: var(--positivo); }
+  .etiqueta.C { background: #F1ECE6; color: var(--texto-suave); }
+  form.linha { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+  form.linha label { display: flex; flex-direction: column; font-size: 12px; color: var(--texto-suave); gap: 3px; }
+  input, select, textarea { border: 1px solid var(--linha); border-radius: 8px; padding: 7px 9px; background: #fff; color: var(--texto); }
+  dialog { border: 1px solid var(--linha); border-radius: 14px; padding: 20px; max-width: 460px; width: 92vw; }
+  dialog::backdrop { background: rgba(0,0,0,.35); }
+  dialog label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; margin-bottom: 10px; color: var(--texto-suave); }
+  .acoes { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+  .dica { font-size: 12px; color: var(--texto-suave); }
+  @media (max-width: 640px) { header, main, nav { padding-left: 16px; padding-right: 16px; } }
+  @media print { nav, .barra, button { display: none !important; } .aba { display: block !important; } }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="titulo">Painel de vendas</h1>
+  <div class="sub" id="subtitulo">Comercial Inteligente</div>
+  <div class="barra">
+    <div class="aviso" id="aviso">Carregando…</div>
+    <button id="btnConectar">Conectar pasta do projeto</button>
+    <button class="leve" id="btnCopiar">Copiar alterações para o Claude</button>
+    <label class="dica">Mês <select id="mes"></select></label>
+  </div>
+</header>
+<nav>
+  <button data-aba="hoje" class="ativa">Hoje</button>
+  <button data-aba="funil">Funil</button>
+  <button data-aba="leads">Leads</button>
+  <button data-aba="financeiro">Financeiro</button>
+</nav>
+<main>
+  <section class="aba ativa" id="aba-hoje">
+    <div class="kpis" id="kpis"></div>
+    <div class="cartao">
+      <h2>Quem precisa de retorno</h2>
+      <div class="tabela-rolagem"><table id="tabRetornos"></table></div>
+    </div>
+    <div class="cartao">
+      <h2>Funil em números</h2>
+      <div class="tabela-rolagem"><table id="tabEtapas"></table></div>
+    </div>
+  </section>
+
+  <section class="aba" id="aba-funil">
+    <div class="cartao">
+      <h2>Novo negócio</h2>
+      <form class="linha" id="formNegocio">
+        <label>Empresa <input name="empresa" required></label>
+        <label>Quem decide <input name="decisor"></label>
+        <label>Origem <input name="origem" placeholder="indicação, prospecção…"></label>
+        <label>Oferta <input name="oferta"></label>
+        <label>Etapa <select name="etapa" id="selEtapaNovo"></select></label>
+        <label>Próxima ação <input name="proxima_acao"></label>
+        <label>Data <input type="date" name="data_proxima_acao"></label>
+        <button>Adicionar</button>
+      </form>
+    </div>
+    <p class="dica">Arraste os cartões entre as colunas. Ao soltar em “ganho”, informe valor e meses; em “perdido”, o motivo.</p>
+    <div class="funil" id="funil"></div>
+  </section>
+
+  <section class="aba" id="aba-leads">
+    <div class="cartao">
+      <h2>Leads mapeados</h2>
+      <form class="linha" onsubmit="return false">
+        <label>Buscar <input id="buscaLead" placeholder="nome, bairro, categoria"></label>
+        <label>Classe <select id="filtroClasse"><option value="">todas</option><option>A</option><option>B</option><option>C</option><option>descartado</option></select></label>
+        <label>Status <select id="filtroStatus"><option value="">todos</option><option>mapeado</option><option>investigado</option><option>no-funil</option><option>descartado</option></select></label>
+      </form>
+      <div class="tabela-rolagem"><table id="tabLeads"></table></div>
+    </div>
+  </section>
+
+  <section class="aba" id="aba-financeiro">
+    <div class="kpis" id="kpisFin"></div>
+    <div class="cartao">
+      <h2>Meta do mês</h2>
+      <form class="linha" id="formMeta">
+        <label>Meta de faturamento (R$) <input type="number" step="0.01" min="0" name="meta_faturamento" required></label>
+        <label>Novos clientes <input type="number" min="0" name="meta_novos_clientes"></label>
+        <button>Salvar meta</button>
+      </form>
+    </div>
+    <div class="cartao">
+      <h2>Entradas do mês</h2>
+      <div class="tabela-rolagem"><table id="tabEntradas"></table></div>
+    </div>
+    <div class="cartao">
+      <h2>Despesas do mês</h2>
+      <form class="linha" id="formDespesa">
+        <label>Data <input type="date" name="data" required></label>
+        <label>Descrição <input name="descricao" required></label>
+        <label>Categoria <input name="categoria" placeholder="ferramenta, equipe…"></label>
+        <label>Valor (R$) <input type="number" step="0.01" min="0" name="valor" required></label>
+        <label>Recorrente <select name="recorrente"><option value="nao">não</option><option value="sim">sim</option></select></label>
+        <button>Adicionar</button>
+      </form>
+      <div class="tabela-rolagem"><table id="tabDespesas"></table></div>
+    </div>
+  </section>
+</main>
+
+<dialog id="dlgGanho">
+  <form method="dialog">
+    <h2 style="margin-top:0">Negócio ganho 🎉</h2>
+    <label>Valor por mês (R$) <input type="number" step="0.01" min="0" id="gValor" required></label>
+    <label>Meses de contrato (venda única = 1) <input type="number" min="1" id="gMeses" value="1" required></label>
+    <label>Data do fechamento <input type="date" id="gData" required></label>
+    <div class="acoes"><button value="cancelar" class="leve" formnovalidate>Cancelar</button><button value="ok">Confirmar</button></div>
+  </form>
+</dialog>
+<dialog id="dlgPerdido">
+  <form method="dialog">
+    <h2 style="margin-top:0">Negócio perdido</h2>
+    <label>Motivo
+      <select id="pMotivo">
+        <option>preço</option><option>momento</option><option>escolheu outra pessoa</option>
+        <option>sem resposta</option><option>pediu para não ser contatado</option><option>outro</option>
+      </select>
+    </label>
+    <div class="acoes"><button value="cancelar" class="leve">Cancelar</button><button value="ok">Confirmar</button></div>
+  </form>
+</dialog>
+
+<!-- Fotografia das planilhas, gerada por ferramentas/atualizar-painel.sh -->
+<script src="dados.js"></script>
+<script>
+"use strict";
+const ETAPAS = ["mapeado","abordado","em-conversa","diagnostico","proposta","negociacao","ganho","perdido"];
+const NOMES_ETAPA = { "mapeado":"mapeado","abordado":"abordado","em-conversa":"em conversa","diagnostico":"diagnóstico","proposta":"proposta","negociacao":"negociação","ganho":"ganho","perdido":"perdido" };
+const CAB = {
+  negocios: "id,lead_id,empresa,decisor,origem,etapa,oferta,valor_mensal,meses,valor_total,proxima_acao,data_proxima_acao,ultimo_contato,motivo_perda,fechado_em,observacoes",
+  despesas: "data,descricao,categoria,valor,recorrente",
+  metas: "mes,meta_faturamento,meta_novos_clientes",
+  leads: "id,nome,categoria,cidade,bairro,telefone,whatsapp_confirmado,site,instagram,email,nota_google,avaliacoes,link_maps,evidencias,leitura,indice_fit,classe,status,fonte,coletado_em",
+  contatos: "data,negocio_id,canal,tipo,resumo"
+};
+const ARQ = { negocios:"6-vendas/negocios.csv", despesas:"6-vendas/despesas.csv", metas:"6-vendas/metas.csv", leads:"1-leads/leads.csv", contatos:"6-vendas/contatos.csv" };
+
+/* ---------- CSV ---------- */
+function lerCSV(texto) {
+  const linhas = []; let campo = "", linha = [], aspas = false;
+  texto = (texto || "").replace(/^﻿/, "");
+  for (let i = 0; i < texto.length; i++) {
+    const c = texto[i];
+    if (aspas) {
+      if (c === '"' && texto[i+1] === '"') { campo += '"'; i++; }
+      else if (c === '"') aspas = false;
+      else campo += c;
+    } else if (c === '"') aspas = true;
+    else if (c === ",") { linha.push(campo); campo = ""; }
+    else if (c === "\n" || c === "\r") {
+      if (c === "\r" && texto[i+1] === "\n") i++;
+      linha.push(campo); campo = "";
+      if (linha.some(v => v !== "")) linhas.push(linha);
+      linha = [];
+    } else campo += c;
+  }
+  linha.push(campo); if (linha.some(v => v !== "")) linhas.push(linha);
+  if (!linhas.length) return [];
+  const cab = linhas.shift().map(s => s.trim());
+  return linhas.map(l => Object.fromEntries(cab.map((k, j) => [k, (l[j] ?? "").trim()])));
+}
+function escreverCSV(nome, registros) {
+  const cab = CAB[nome].split(",");
+  const esc = v => { v = v == null ? "" : String(v); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+  return [cab.join(","), ...registros.map(r => cab.map(k => esc(r[k])).join(","))].join("\n") + "\n";
+}
+
+/* ---------- estado ---------- */
+const D = { negocios: [], despesas: [], metas: [], leads: [], contatos: [] };
+let pasta = null, alterado = new Set();
+const brl = n => (Number(n) || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const num = v => { const n = parseFloat(String(v ?? "").replace(",", ".")); return isNaN(n) ? 0 : n; };
+const hoje = () => new Date().toISOString().slice(0, 10);
+const mesDe = d => (d || "").slice(0, 7);
+const somaMeses = (am, k) => { const [a, m] = am.split("-").map(Number); const t = a * 12 + (m - 1) + k; return `${Math.floor(t / 12)}-${String(t % 12 + 1).padStart(2, "0")}`; };
+const fmtData = d => d ? d.split("-").reverse().join("/") : "";
+const h = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+
+function carregarFoto() {
+  const fonte = window.DADOS_CSV || {};
+  for (const k of Object.keys(D)) D[k] = lerCSV(fonte[k] || "");
+  if (window.DADOS_INFO && window.DADOS_INFO.empresa) {
+    document.getElementById("titulo").textContent = "Painel de vendas · " + window.DADOS_INFO.empresa;
+    document.title = "Painel · " + window.DADOS_INFO.empresa;
+  }
+}
+
+/* ---------- pasta conectada (Chrome / Edge) ---------- */
+const BANCO = "comercial-inteligente";
+function idb(modo, valor) {
+  return new Promise(res => {
+    try {
+      const req = indexedDB.open(BANCO, 1);
+      req.onupgradeneeded = () => req.result.createObjectStore("h");
+      req.onsuccess = () => {
+        const tx = req.result.transaction("h", modo === "pegar" ? "readonly" : "readwrite");
+        const st = tx.objectStore("h");
+        const op = modo === "pegar" ? st.get("pasta") : st.put(valor, "pasta");
+        op.onsuccess = () => res(op.result); op.onerror = () => res(null);
+      };
+      req.onerror = () => res(null);
+    } catch (e) { res(null); }
+  });
+}
+async function arquivo(caminho, criar) {
+  const partes = caminho.split("/"); let dir = pasta;
+  for (const p of partes.slice(0, -1)) dir = await dir.getDirectoryHandle(p, { create: !!criar });
+  return dir.getFileHandle(partes.at(-1), { create: !!criar });
+}
+async function lerDaPasta(manter = new Set()) {
+  for (const k of Object.keys(ARQ)) {
+    if (manter.has(k)) continue; // edições feitas antes de conectar têm prioridade
+    try { const f = await (await arquivo(ARQ[k])).getFile(); D[k] = lerCSV(await f.text()); }
+    catch (e) { D[k] = []; }
+  }
+}
+async function gravar(nome) {
+  alterado.add(nome);
+  if (!pasta) { avisar(); return; }
+  try {
+    const w = await (await arquivo(ARQ[nome], true)).createWritable();
+    await w.write(escreverCSV(nome, D[nome])); await w.close();
+    alterado.delete(nome);
+  } catch (e) { alert("Não consegui gravar " + ARQ[nome] + ". Reconecte a pasta do projeto."); }
+  avisar();
+}
+async function conectar() {
+  if (!window.showDirectoryPicker) { alert("Para gravar direto nas planilhas, abra este painel no Google Chrome ou no Microsoft Edge."); return; }
+  try {
+    const p = await window.showDirectoryPicker({ mode: "readwrite" });
+    try { await p.getFileHandle("CLAUDE.md"); }
+    catch (e) { alert("Escolha a pasta principal do projeto (a que tem o arquivo CLAUDE.md), não uma subpasta."); return; }
+    pasta = p; await idb("guardar", p); await lerDaPasta(new Set(alterado));
+    for (const k of [...alterado]) await gravar(k);
+    montarMeses(); renderizar();
+  } catch (e) { /* cancelado */ }
+}
+async function reconectarSilencioso() {
+  const p = await idb("pegar"); if (!p || !p.queryPermission) return;
+  if ((await p.queryPermission({ mode: "readwrite" })) === "granted") { pasta = p; await lerDaPasta(); }
+  else { document.getElementById("btnConectar").textContent = "Reconectar pasta do projeto"; }
+}
+function avisar() {
+  const el = document.getElementById("aviso");
+  if (pasta) {
+    el.className = "aviso ok";
+    el.textContent = alterado.size ? "Pasta conectada · gravando…" : "Pasta conectada: o que você muda aqui é gravado nas planilhas do projeto.";
+  } else {
+    el.className = "aviso";
+    el.textContent = alterado.size
+      ? "Você tem alterações que ainda não foram gravadas. Conecte a pasta do projeto ou use “Copiar alterações para o Claude”."
+      : "Modo leitura: mostrando a última fotografia das planilhas. Para editar e gravar, conecte a pasta do projeto (Chrome ou Edge).";
+  }
+}
+async function copiarParaClaude() {
+  const nomes = alterado.size ? [...alterado] : ["negocios", "despesas", "metas"];
+  const txt = "Atualize as planilhas do projeto com o conteúdo abaixo (substitua o arquivo inteiro) e depois rode bash ferramentas/atualizar-painel.sh.\n\n" +
+    nomes.map(n => `=== ${ARQ[n]} ===\n${escreverCSV(n, D[n])}`).join("\n");
+  try { await navigator.clipboard.writeText(txt); alert("Copiado. Cole no Claude Code."); }
+  catch (e) { prompt("Copie o texto abaixo e cole no Claude Code:", txt); }
+}
+
+/* ---------- cálculos ---------- */
+function entradasDoMes(am) {
+  const out = [];
+  for (const n of D.negocios) {
+    if (n.etapa !== "ganho" || !n.fechado_em) continue;
+    const meses = Math.max(1, parseInt(n.meses) || 1);
+    const mensal = num(n.valor_mensal) || num(n.valor_total) / meses;
+    const ini = mesDe(n.fechado_em);
+    for (let k = 0; k < meses; k++) if (somaMeses(ini, k) === am) out.push({ empresa: n.empresa, valor: mensal, parcela: `${k + 1}/${meses}` });
+  }
+  return out;
+}
+function despesasDoMes(am) {
+  return D.despesas.filter(d => mesDe(d.data) === am || (d.recorrente === "sim" && mesDe(d.data) < am));
+}
+function metaDoMes(am) { return D.metas.find(m => m.mes === am) || null; }
+
+/* ---------- telas ---------- */
+function renderizar() {
+  const am = document.getElementById("mes").value;
+  const entradas = entradasDoMes(am), fat = entradas.reduce((s, e) => s + e.valor, 0);
+  const desp = despesasDoMes(am).reduce((s, d) => s + num(d.valor), 0);
+  const meta = metaDoMes(am), metaV = meta ? num(meta.meta_faturamento) : 0;
+  const abertos = D.negocios.filter(n => !["ganho", "perdido"].includes(n.etapa));
+  const naMesa = D.negocios.filter(n => ["proposta", "negociacao"].includes(n.etapa)).reduce((s, n) => s + num(n.valor_total), 0);
+  const ganhos = D.negocios.filter(n => n.etapa === "ganho").length, perdidos = D.negocios.filter(n => n.etapa === "perdido").length;
+  const novosMes = D.negocios.filter(n => n.etapa === "ganho" && mesDe(n.fechado_em) === am).length;
+  const pct = metaV ? Math.min(100, Math.round(fat / metaV * 100)) : 0;
+
+  document.getElementById("kpis").innerHTML = [
+    ["Faturamento do mês", brl(fat), metaV ? `${pct}% da meta de ${brl(metaV)}` : "sem meta definida", metaV ? pct : null],
+    ["Sobra do mês", brl(fat - desp), `despesas: ${brl(desp)}`],
+    ["Na mesa", brl(naMesa), "propostas e negociações abertas"],
+    ["Taxa de fechamento", ganhos + perdidos ? Math.round(ganhos / (ganhos + perdidos) * 100) + "%" : "—", `${ganhos} ganhos · ${perdidos} perdidos`],
+    ["Novos clientes no mês", String(novosMes), meta && meta.meta_novos_clientes ? `meta: ${meta.meta_novos_clientes}` : ""]
+  ].map(([r, v, n, p]) => `<div class="kpi"><div class="rotulo">${r}</div><div class="valor">${v}</div><div class="nota">${n}</div>${p != null ? `<div class="progresso"><div style="width:${p}%"></div></div>` : ""}</div>`).join("");
+
+  const ret = abertos.filter(n => n.data_proxima_acao && n.data_proxima_acao <= hoje()).sort((a, b) => a.data_proxima_acao.localeCompare(b.data_proxima_acao));
+  document.getElementById("tabRetornos").innerHTML = ret.length
+    ? `<tr><th>Empresa</th><th>Etapa</th><th>Próxima ação</th><th>Data</th><th></th></tr>` + ret.map(n =>
+      `<tr><td>${h(n.empresa)}</td><td>${NOMES_ETAPA[n.etapa] || h(n.etapa)}</td><td>${h(n.proxima_acao)}</td><td class="${n.data_proxima_acao < hoje() ? "atrasado" : ""}">${fmtData(n.data_proxima_acao)}</td><td><button class="leve" data-feito="${h(n.id)}">feito</button></td></tr>`).join("")
+    : `<tr><td class="vazio">Nenhum retorno para hoje. Bom momento para abastecer o funil.</td></tr>`;
+
+  document.getElementById("tabEtapas").innerHTML = `<tr><th>Etapa</th><th class="num">Negócios</th><th class="num">Valor</th></tr>` +
+    ETAPAS.map(e => { const l = D.negocios.filter(n => n.etapa === e); return `<tr><td>${NOMES_ETAPA[e]}</td><td class="num">${l.length}</td><td class="num">${brl(l.reduce((s, n) => s + num(n.valor_total), 0))}</td></tr>`; }).join("");
+
+  document.getElementById("funil").innerHTML = ETAPAS.map(e => {
+    const l = D.negocios.filter(n => n.etapa === e);
+    return `<div class="coluna" data-etapa="${e}"><h3><span>${NOMES_ETAPA[e]}</span><span>${l.length}</span></h3>` +
+      l.map(n => `<div class="negocio" draggable="true" data-id="${h(n.id)}"><strong>${h(n.empresa)}</strong>` +
+        `<span class="meta">${n.valor_total ? brl(n.valor_total) + " · " : ""}${n.data_proxima_acao ? "→ " + fmtData(n.data_proxima_acao) : ""}</span>` +
+        `${n.proxima_acao ? `<div class="meta">${h(n.proxima_acao)}</div>` : ""}</div>`).join("") + `</div>`;
+  }).join("");
+
+  const busca = document.getElementById("buscaLead").value.toLowerCase();
+  const fc = document.getElementById("filtroClasse").value, fs = document.getElementById("filtroStatus").value;
+  const leads = D.leads.filter(l => (!fc || l.classe === fc) && (!fs || l.status === fs) &&
+    (!busca || [l.nome, l.bairro, l.categoria, l.cidade].join(" ").toLowerCase().includes(busca)))
+    .sort((a, b) => num(b.indice_fit) - num(a.indice_fit));
+  document.getElementById("tabLeads").innerHTML = leads.length
+    ? `<tr><th>Lead</th><th>Categoria</th><th>Bairro</th><th class="num">Fit</th><th>Classe</th><th>Contato</th><th>Status</th><th></th></tr>` +
+      leads.map(l => `<tr><td><strong>${h(l.nome)}</strong><div class="dica">${h(l.leitura)}</div></td><td>${h(l.categoria)}</td><td>${h(l.bairro)}</td><td class="num">${h(l.indice_fit)}</td>` +
+        `<td><span class="etiqueta ${h(l.classe)}">${h(l.classe)}</span></td><td>${h(l.telefone)}${l.instagram ? "<br>" + h(l.instagram) : ""}</td><td>${h(l.status)}</td>` +
+        `<td>${l.status !== "no-funil" && l.status !== "descartado" ? `<button class="leve" data-funil="${h(l.id)}">levar para o funil</button>` : ""}</td></tr>`).join("")
+    : `<tr><td class="vazio">Nenhum lead por aqui ainda. Rode /mapa-de-leads no Claude Code.</td></tr>`;
+
+  document.getElementById("kpisFin").innerHTML = [
+    ["Entrou", brl(fat)], ["Saiu", brl(desp)], ["Sobrou", brl(fat - desp)],
+    ["Ticket médio", ganhos ? brl(D.negocios.filter(n => n.etapa === "ganho").reduce((s, n) => s + num(n.valor_total), 0) / ganhos) : "—"]
+  ].map(([r, v]) => `<div class="kpi"><div class="rotulo">${r}</div><div class="valor">${v}</div></div>`).join("");
+  const fm = document.getElementById("formMeta");
+  fm.meta_faturamento.value = meta ? meta.meta_faturamento : ""; fm.meta_novos_clientes.value = meta ? meta.meta_novos_clientes : "";
+  document.getElementById("tabEntradas").innerHTML = entradas.length
+    ? `<tr><th>Cliente</th><th>Parcela</th><th class="num">Valor</th></tr>` + entradas.map(e => `<tr><td>${h(e.empresa)}</td><td>${e.parcela}</td><td class="num">${brl(e.valor)}</td></tr>`).join("")
+    : `<tr><td class="vazio">Nenhuma entrada neste mês.</td></tr>`;
+  const dm = despesasDoMes(am);
+  document.getElementById("tabDespesas").innerHTML = dm.length
+    ? `<tr><th>Data</th><th>Descrição</th><th>Categoria</th><th>Recorrente</th><th class="num">Valor</th></tr>` + dm.map(d => `<tr><td>${fmtData(d.data)}</td><td>${h(d.descricao)}</td><td>${h(d.categoria)}</td><td>${d.recorrente === "sim" ? "sim" : "não"}</td><td class="num">${brl(d.valor)}</td></tr>`).join("")
+    : `<tr><td class="vazio">Nenhuma despesa neste mês.</td></tr>`;
+  avisar();
+}
+
+function proximoId(lista, prefixo) {
+  const max = lista.reduce((m, r) => Math.max(m, parseInt((r.id || "").replace(/\D/g, "")) || 0), 0);
+  return prefixo + String(max + 1).padStart(3, "0");
+}
+async function moverNegocio(id, etapa) {
+  const n = D.negocios.find(x => x.id === id); if (!n || n.etapa === etapa) return;
+  if (etapa === "ganho") {
+    const dlg = document.getElementById("dlgGanho");
+    document.getElementById("gValor").value = n.valor_mensal || ""; document.getElementById("gMeses").value = n.meses || 1; document.getElementById("gData").value = hoje();
+    dlg.showModal(); await new Promise(r => dlg.addEventListener("close", r, { once: true }));
+    if (dlg.returnValue !== "ok") return;
+    n.valor_mensal = num(document.getElementById("gValor").value).toFixed(2);
+    n.meses = String(Math.max(1, parseInt(document.getElementById("gMeses").value) || 1));
+    n.valor_total = (num(n.valor_mensal) * num(n.meses)).toFixed(2);
+    n.fechado_em = document.getElementById("gData").value; n.proxima_acao = "iniciar entrega"; n.data_proxima_acao = "";
+  } else if (etapa === "perdido") {
+    const dlg = document.getElementById("dlgPerdido"); dlg.showModal();
+    await new Promise(r => dlg.addEventListener("close", r, { once: true }));
+    if (dlg.returnValue !== "ok") return;
+    n.motivo_perda = document.getElementById("pMotivo").value; n.data_proxima_acao = "";
+  }
+  n.etapa = etapa; n.ultimo_contato = n.ultimo_contato || hoje();
+  await gravar("negocios"); renderizar();
+}
+
+/* ---------- eventos ---------- */
+document.querySelectorAll("nav button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("nav button").forEach(x => x.classList.toggle("ativa", x === b));
+  document.querySelectorAll(".aba").forEach(a => a.classList.toggle("ativa", a.id === "aba-" + b.dataset.aba));
+});
+document.getElementById("btnConectar").onclick = conectar;
+document.getElementById("btnCopiar").onclick = copiarParaClaude;
+document.getElementById("mes").onchange = renderizar;
+["buscaLead", "filtroClasse", "filtroStatus"].forEach(id => document.getElementById(id).oninput = renderizar);
+document.getElementById("selEtapaNovo").innerHTML = ETAPAS.filter(e => !["ganho", "perdido"].includes(e)).map(e => `<option value="${e}">${NOMES_ETAPA[e]}</option>`).join("");
+
+const funil = document.getElementById("funil");
+funil.addEventListener("dragstart", e => { const c = e.target.closest(".negocio"); if (c) e.dataTransfer.setData("text/plain", c.dataset.id); });
+funil.addEventListener("dragover", e => { const col = e.target.closest(".coluna"); if (col) { e.preventDefault(); col.classList.add("sobre"); } });
+funil.addEventListener("dragleave", e => { const col = e.target.closest(".coluna"); if (col) col.classList.remove("sobre"); });
+funil.addEventListener("drop", e => { const col = e.target.closest(".coluna"); if (!col) return; e.preventDefault(); col.classList.remove("sobre"); moverNegocio(e.dataTransfer.getData("text/plain"), col.dataset.etapa); });
+
+document.getElementById("formNegocio").onsubmit = async e => {
+  e.preventDefault(); const f = Object.fromEntries(new FormData(e.target));
+  D.negocios.push({ ...f, id: proximoId(D.negocios, "N"), lead_id: "", meses: "1", ultimo_contato: hoje() });
+  e.target.reset(); await gravar("negocios"); renderizar();
+};
+document.getElementById("formDespesa").onsubmit = async e => {
+  e.preventDefault(); const f = Object.fromEntries(new FormData(e.target));
+  f.valor = num(f.valor).toFixed(2); D.despesas.push(f); e.target.reset(); await gravar("despesas"); renderizar();
+};
+document.getElementById("formMeta").onsubmit = async e => {
+  e.preventDefault(); const am = document.getElementById("mes").value, f = Object.fromEntries(new FormData(e.target));
+  let m = metaDoMes(am); if (!m) { m = { mes: am }; D.metas.push(m); }
+  m.meta_faturamento = num(f.meta_faturamento).toFixed(2); m.meta_novos_clientes = f.meta_novos_clientes || "";
+  await gravar("metas"); renderizar();
+};
+document.addEventListener("click", async e => {
+  const feito = e.target.closest("[data-feito]");
+  if (feito) {
+    const n = D.negocios.find(x => x.id === feito.dataset.feito);
+    const prox = prompt(`Retorno feito para ${n.empresa}. Qual é a próxima ação? (deixe vazio se não houver)`, "");
+    if (prox === null) return;
+    const data = prox ? prompt("Data da próxima ação (AAAA-MM-DD):", new Date(Date.now() + 3 * 864e5).toISOString().slice(0, 10)) : "";
+    n.ultimo_contato = hoje(); n.proxima_acao = prox || ""; n.data_proxima_acao = data || "";
+    D.contatos.push({ data: hoje(), negocio_id: n.id, canal: "", tipo: "outro", resumo: "retorno registrado no painel" });
+    await gravar("negocios"); await gravar("contatos"); renderizar();
+  }
+  const lv = e.target.closest("[data-funil]");
+  if (lv) {
+    const l = D.leads.find(x => x.id === lv.dataset.funil);
+    D.negocios.push({ id: proximoId(D.negocios, "N"), lead_id: l.id, empresa: l.nome, origem: "prospecção ativa", etapa: "mapeado", meses: "1", proxima_acao: "primeira mensagem", data_proxima_acao: hoje() });
+    l.status = "no-funil";
+    await gravar("negocios"); await gravar("leads"); renderizar();
+  }
+});
+
+function montarMeses() {
+  const meses = new Set([mesDe(hoje())]);
+  D.negocios.forEach(n => n.fechado_em && meses.add(mesDe(n.fechado_em)));
+  D.despesas.forEach(d => d.data && meses.add(mesDe(d.data)));
+  D.metas.forEach(m => m.mes && meses.add(m.mes));
+  const lista = [...meses].filter(Boolean).sort().reverse();
+  const sel = document.getElementById("mes"), atual = sel.value || mesDe(hoje());
+  sel.innerHTML = lista.map(m => `<option value="${m}">${m.slice(5)}/${m.slice(0, 4)}</option>`).join("");
+  sel.value = atual;
+}
+
+(async function iniciar() {
+  carregarFoto(); montarMeses(); renderizar();
+  // Reconecta a pasta em segundo plano, sem travar a tela
+  const limite = new Promise(r => setTimeout(r, 2000));
+  await Promise.race([reconectarSilencioso(), limite]);
+  if (pasta) { montarMeses(); renderizar(); }
+})();
+</script>
+</body>
+</html>

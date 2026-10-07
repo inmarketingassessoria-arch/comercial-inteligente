@@ -1,0 +1,5 @@
+dist/
+.DS_Store
+kit/.env
+kit/1-leads/busca/
+bia/

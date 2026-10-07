@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bash ferramentas/apify.sh:*)",
+      "Bash(bash ferramentas/atualizar-painel.sh:*)",
+      "Bash(grep -c '^APIFY_TOKEN=.\\+' .env)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Bash(cat .env:*)",
+      "Bash(cat ./.env:*)",
+      "Bash(head .env:*)",
+      "Bash(less .env:*)",
+      "Bash(more .env:*)"
+    ]
+  }
+}

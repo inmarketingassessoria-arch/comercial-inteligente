@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador de preço</title>
+<style>
+  :root {
+    --fundo: #FAF7F2; --superficie: #FFFFFF; --texto: #1F1B18; --texto-suave: #6B635C;
+    --linha: #E6DED4; --destaque: #7B2D3A; --destaque-suave: #F3E7E3; --positivo: #2F6B4F; --alerta: #A4501E;
+    --fonte-titulo: Georgia, "Times New Roman", serif; --fonte-texto: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fundo); color: var(--texto); font: 15px/1.5 var(--fonte-texto); }
+  .pagina { max-width: 1080px; margin: 0 auto; padding: 24px 24px 60px; }
+  h1 { font: italic 600 30px/1.2 var(--fonte-titulo); margin: 0; }
+  h2 { font: 600 19px/1.3 var(--fonte-titulo); margin: 0 0 12px; }
+  .sub { color: var(--texto-suave); margin-bottom: 16px; }
+  .barra { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+  button { font: inherit; background: var(--destaque); color: #fff; border: 0; border-radius: 8px; padding: 8px 14px; cursor: pointer; }
+  button.leve { background: transparent; color: var(--destaque); border: 1px solid var(--destaque); }
+  .destaques { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 18px; }
+  .kpi { background: var(--superficie); border: 1px solid var(--linha); border-radius: 12px; padding: 14px 16px; }
+  .kpi .rotulo { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--texto-suave); }
+  .kpi .valor { font: 600 26px/1.3 var(--fonte-titulo); font-variant-numeric: tabular-nums; }
+  .kpi .nota { font-size: 12px; color: var(--texto-suave); }
+  .diagnostico { padding: 14px 16px; border-radius: 12px; margin-bottom: 18px; border: 1px solid var(--linha); background: var(--destaque-suave); }
+  .diagnostico.bom { background: #EAF3EE; }
+  .cartao { background: var(--superficie); border: 1px solid var(--linha); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
+  .campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--texto-suave); }
+  input, textarea { font: inherit; border: 1px solid var(--linha); border-radius: 8px; padding: 7px 9px; color: var(--texto); background: #fff; width: 100%; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--linha); vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .03em; color: var(--texto-suave); font-weight: 500; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .conta { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; color: var(--texto-suave); }
+  .pacotes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .pacote { border: 1px solid var(--linha); border-radius: 12px; padding: 14px; background: var(--fundo); }
+  .pacote.recomendado { border: 2px solid var(--destaque); }
+  .pacote .selo { font-size: 11px; color: var(--destaque); text-transform: uppercase; letter-spacing: .05em; min-height: 16px; }
+  .pacote .linha-res { display: flex; justify-content: space-between; font-size: 13px; padding: 3px 0; }
+  .alerta { color: var(--alerta); font-weight: 600; font-size: 13px; }
+  .ok { color: var(--positivo); font-weight: 600; font-size: 13px; }
+  .escondido { display: none !important; }
+  .rodape { font-size: 12px; color: var(--texto-suave); margin-top: 24px; }
+  @media print { .barra { display: none; } body { background: #fff; } .cartao, .kpi { break-inside: avoid; } }
+</style>
+</head>
+<body>
+<div class="pagina">
+  <h1 id="titulo">Meu preço, com a conta aberta</h1>
+  <div class="sub" id="subtitulo"></div>
+  <div class="barra">
+    <button id="btnCopiar">Copiar números para o Claude</button>
+    <button class="leve" id="btnVoltar">Voltar aos números salvos</button>
+    <button class="leve" onclick="window.print()">Salvar em PDF</button>
+  </div>
+
+  <div class="destaques" id="destaques"></div>
+  <div class="diagnostico" id="diagnostico"></div>
+
+  <div class="cartao">
+    <h2>Os seus números</h2>
+    <p class="sub" style="margin-top:-6px">Mude qualquer valor: tudo recalcula na hora. Percentuais em %.</p>
+    <div class="campos" id="campos"></div>
+  </div>
+
+  <div class="cartao">
+    <h2>A conta aberta</h2>
+    <table id="tabConta"></table>
+  </div>
+
+  <div class="cartao">
+    <h2>E se eu cobrar…</h2>
+    <div class="campos"><label>Preço para testar (R$) <input type="number" step="0.01" id="teste"></label></div>
+    <p id="resTeste" style="margin-bottom:0"></p>
+  </div>
+
+  <div class="cartao">
+    <h2>Cenários de margem</h2>
+    <table id="tabCenarios"></table>
+  </div>
+
+  <div class="cartao" id="cartaoCapacidade">
+    <h2>Agenda × meta</h2>
+    <table id="tabCapacidade"></table>
+    <p id="resCapacidade" style="margin-bottom:0"></p>
+  </div>
+
+  <div class="cartao" id="cartaoPacotes">
+    <h2>Pacotes</h2>
+    <p class="sub" style="margin-top:-6px">O que muda entre os pacotes é a entrega. Desconto tira escopo, nunca margem.</p>
+    <div class="pacotes" id="pacotes"></div>
+  </div>
+
+  <div class="cartao">
+    <h2>A minha decisão</h2>
+    <div class="campos">
+      <label>Preço que eu decidi usar (R$) <input type="number" step="0.01" id="decisao"></label>
+      <label>Frase para dar o preço <textarea id="frase" rows="3"></textarea></label>
+    </div>
+  </div>
+  <p class="rodape">Simulador de apoio à decisão. Impostos e enquadramento devem ser confirmados com a contabilidade. Quem decide o preço é você.</p>
+</div>
+
+<!-- Os números ficam aqui. O Claude atualiza este bloco. -->
+<script id="dados" type="application/json">
+{
+  "titulo": "Meu preço, com a conta aberta",
+  "oferta": "Oferta principal",
+  "modo": "servico",
+  "servico": {
+    "preco_atual": 2000,
+    "horas_cliente": 20,
+    "reserva_pct": 20,
+    "custos_diretos": 300,
+    "custos_fixos": 1500,
+    "pro_labore": 5000,
+    "horas_mes": 160,
+    "vendavel_pct": 60,
+    "impostos_pct": 6,
+    "taxas_pct": 0,
+    "margem_pct": 20,
+    "meta": 10000
+  },
+  "produto": {
+    "preco_atual": 100,
+    "custo_unidade": 35,
+    "custos_variaveis": 8,
+    "impostos_pct": 6,
+    "taxas_pct": 5,
+    "custos_fixos": 4000,
+    "margem_pct": 35,
+    "meta": 15000
+  },
+  "pacotes": [
+    { "nome": "Entrada", "descricao": "O essencial para começar", "horas": 12, "custos_diretos": 150, "preco": 1800, "recomendado": false },
+    { "nome": "Recomendada", "descricao": "A que resolve o problema por inteiro", "horas": 20, "custos_diretos": 300, "preco": 3000, "recomendado": true },
+    { "nome": "Completa", "descricao": "Tudo da recomendada e mais", "horas": 30, "custos_diretos": 450, "preco": 4500, "recomendado": false }
+  ],
+  "decisao": "",
+  "frase": ""
+}
+</script>
+<script>
+"use strict";
+const ORIGINAL = JSON.parse(document.getElementById("dados").textContent);
+let S = JSON.parse(JSON.stringify(ORIGINAL));
+const brl = n => isFinite(n) ? n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "—";
+const pct = n => isFinite(n) ? (n * 100).toFixed(1).replace(".", ",") + "%" : "—";
+const hr = n => n.toLocaleString("pt-BR", { maximumFractionDigits: 1 }) + " h";
+const h = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+
+const CAMPOS = {
+  servico: [
+    ["preco_atual","Preço atual por cliente (R$)"],["horas_cliente","Horas por cliente"],["reserva_pct","Reserva para trabalho invisível (%)"],
+    ["custos_diretos","Custos diretos por cliente (R$)"],["custos_fixos","Custos fixos do mês (R$)"],["pro_labore","Pró-labore (R$)"],
+    ["horas_mes","Horas trabalhadas no mês"],["vendavel_pct","Horas vendáveis (%)"],["impostos_pct","Impostos (%)"],
+    ["taxas_pct","Taxas de recebimento (%)"],["margem_pct","Margem desejada (%)"],["meta","Meta de faturamento do mês (R$)"]
+  ],
+  produto: [
+    ["preco_atual","Preço atual de venda (R$)"],["custo_unidade","Custo da unidade (R$)"],["custos_variaveis","Custos variáveis por venda (R$)"],
+    ["impostos_pct","Impostos (%)"],["taxas_pct","Taxas: plataforma, cartão (%)"],["custos_fixos","Custos fixos do mês, com pró-labore (R$)"],
+    ["margem_pct","Margem de contribuição desejada (%)"],["meta","Meta de faturamento do mês (R$)"]
+  ]
+};
+
+function calcServico(v) {
+  const imp = v.impostos_pct / 100, tax = v.taxas_pct / 100, mg = v.margem_pct / 100;
+  const horasVend = v.horas_mes * v.vendavel_pct / 100;
+  const custoHora = (v.custos_fixos + v.pro_labore) / horasVend;
+  const horasCli = v.horas_cliente * (1 + v.reserva_pct / 100);
+  const custoEntrega = horasCli * custoHora + v.custos_diretos;
+  const piso = custoEntrega / (1 - imp - tax);
+  const alvo = custoEntrega / (1 - imp - tax - mg);
+  const sobraAtual = v.preco_atual * (1 - imp - tax) - custoEntrega;
+  const cabem = Math.floor(horasVend / horasCli);
+  return { imp, tax, horasVend, custoHora, horasCli, custoEntrega, piso, alvo, sobraAtual, cabem,
+    precoDe: m => custoEntrega / (1 - imp - tax - m),
+    sobraDe: p => p * (1 - imp - tax) - custoEntrega };
+}
+function calcProduto(v) {
+  const imp = v.impostos_pct / 100, tax = v.taxas_pct / 100, mg = v.margem_pct / 100;
+  const custoVar = v.custo_unidade + v.custos_variaveis;
+  const piso = custoVar / (1 - imp - tax);
+  const alvo = custoVar / (1 - imp - tax - mg);
+  const contrib = p => p * (1 - imp - tax) - custoVar;
+  return { imp, tax, custoVar, piso, alvo, contrib, sobraAtual: contrib(v.preco_atual),
+    equilibrio: Math.ceil(v.custos_fixos / contrib(v.preco_atual)),
+    precoDe: m => custoVar / (1 - imp - tax - m), sobraDe: contrib };
+}
+
+function montarCampos() {
+  const v = S[S.modo];
+  document.getElementById("campos").innerHTML = CAMPOS[S.modo].map(([k, r]) =>
+    `<label>${r}<input type="number" step="0.01" data-campo="${k}" value="${v[k]}"></label>`).join("");
+}
+
+function render() {
+  const modo = S.modo, v = S[modo], serv = modo === "servico";
+  const c = serv ? calcServico(v) : calcProduto(v);
+  document.getElementById("titulo").textContent = S.titulo || "Meu preço, com a conta aberta";
+  document.getElementById("subtitulo").textContent = (S.oferta || "") + (serv ? " · serviço" : " · produto, por unidade");
+
+  document.getElementById("destaques").innerHTML = [
+    ["Cobra hoje", brl(v.preco_atual), serv ? "por cliente" : "por unidade"],
+    [serv ? "Piso" : "Preço mínimo", brl(c.piso), "margem zero: só cobre os custos"],
+    ["Preço-alvo", brl(c.alvo), `com ${v.margem_pct}% de margem`],
+    ["Sobra hoje", brl(c.sobraAtual), serv ? "por cliente, já pagos custos e impostos" : "por unidade (contribuição)"]
+  ].map(([r, val, n]) => `<div class="kpi"><div class="rotulo">${r}</div><div class="valor">${val}</div><div class="nota">${n}</div></div>`).join("");
+
+  const d = document.getElementById("diagnostico");
+  if (v.preco_atual < c.piso) { d.className = "diagnostico"; d.innerHTML = `<strong>Hoje você paga para trabalhar.</strong> Cada ${serv ? "cliente" : "venda"} custa ${brl(-c.sobraAtual)} a mais do que entra.`; }
+  else if (v.preco_atual < c.alvo) { d.className = "diagnostico"; d.innerHTML = `<strong>Você cobre os custos, mas a empresa não forma reserva.</strong> Faltam ${brl(c.alvo - v.preco_atual)} para chegar ao preço-alvo.`; }
+  else { d.className = "diagnostico bom"; d.innerHTML = `<strong>O preço sustenta o negócio.</strong> Ele está acima do preço-alvo de ${brl(c.alvo)}.`; }
+
+  const linhas = serv ? [
+    ["Horas vendáveis", `${v.horas_mes} h × ${v.vendavel_pct}%`, hr(c.horasVend)],
+    ["Custo da hora", `(${brl(v.custos_fixos)} + ${brl(v.pro_labore)}) ÷ ${hr(c.horasVend)}`, brl(c.custoHora)],
+    ["Horas por cliente", `${v.horas_cliente} h + ${v.reserva_pct}% de reserva`, hr(c.horasCli)],
+    ["Custo de entregar", `${hr(c.horasCli)} × ${brl(c.custoHora)} + ${brl(v.custos_diretos)}`, brl(c.custoEntrega)],
+    ["Piso", `${brl(c.custoEntrega)} ÷ (1 − ${v.impostos_pct}% − ${v.taxas_pct}%)`, brl(c.piso)],
+    ["Preço-alvo", `${brl(c.custoEntrega)} ÷ (1 − ${v.impostos_pct}% − ${v.taxas_pct}% − ${v.margem_pct}%)`, brl(c.alvo)]
+  ] : [
+    ["Custo variável", `${brl(v.custo_unidade)} + ${brl(v.custos_variaveis)}`, brl(c.custoVar)],
+    ["Preço mínimo", `${brl(c.custoVar)} ÷ (1 − ${v.impostos_pct}% − ${v.taxas_pct}%)`, brl(c.piso)],
+    ["Preço-alvo", `${brl(c.custoVar)} ÷ (1 − ${v.impostos_pct}% − ${v.taxas_pct}% − ${v.margem_pct}%)`, brl(c.alvo)],
+    ["Contribuição no preço atual", `${brl(v.preco_atual)} × (1 − ${v.impostos_pct + v.taxas_pct}%) − ${brl(c.custoVar)}`, brl(c.sobraAtual)],
+    ["Ponto de equilíbrio", `${brl(v.custos_fixos)} ÷ ${brl(c.sobraAtual)}`, c.sobraAtual > 0 ? c.equilibrio + " unidades/mês" : "não atinge"]
+  ];
+  document.getElementById("tabConta").innerHTML = `<tr><th>Conta</th><th>Como</th><th class="num">Resultado</th></tr>` +
+    linhas.map(([a, b, r]) => `<tr><td>${a}</td><td class="conta">${b}</td><td class="num">${r}</td></tr>`).join("") +
+    `<tr><td colspan="3" class="conta">A margem é calculada sobre o preço: por isso a conta divide, e não soma.</td></tr>`;
+
+  const t = parseFloat(document.getElementById("teste").value);
+  const rt = document.getElementById("resTeste");
+  if (isFinite(t) && t > 0) {
+    const s = c.sobraDe(t), m = s / t;
+    rt.innerHTML = s >= 0 ? `<span class="ok">Sobram ${brl(s)} ${serv ? "por cliente" : "por unidade"}</span> · margem de ${pct(m)}`
+                          : `<span class="alerta">Faltam ${brl(-s)} ${serv ? "por cliente" : "por unidade"}: você paga para vender.</span>`;
+  } else rt.textContent = "Digite um preço para ver quanto sobra.";
+
+  document.getElementById("tabCenarios").innerHTML = `<tr><th>Margem</th><th class="num">Preço</th><th class="num">Impostos e taxas</th><th class="num">Custo</th><th class="num">Sobra</th></tr>` +
+    [0.15, 0.20, 0.25, 0.30, 0.40].map(m => { const p = c.precoDe(m); return `<tr><td>${Math.round(m * 100)}%</td><td class="num">${brl(p)}</td><td class="num">${brl(p * (c.imp + c.tax))}</td><td class="num">${brl(serv ? c.custoEntrega : c.custoVar)}</td><td class="num">${brl(p * m)}</td></tr>`; }).join("");
+
+  if (serv) {
+    const precoBase = parseFloat(document.getElementById("decisao").value) || c.alvo;
+    const precisa = Math.ceil(v.meta / precoBase);
+    document.getElementById("tabCapacidade").innerHTML =
+      `<tr><td>Clientes que cabem na agenda</td><td class="num">${c.cabem}</td></tr>` +
+      `<tr><td>Faturamento máximo no preço atual</td><td class="num">${brl(c.cabem * v.preco_atual)}</td></tr>` +
+      `<tr><td>Faturamento máximo no preço ${S.decisao ? "decidido" : "alvo"}</td><td class="num">${brl(c.cabem * precoBase)}</td></tr>` +
+      `<tr><td>Clientes necessários para a meta de ${brl(v.meta)}</td><td class="num">${precisa}</td></tr>`;
+    document.getElementById("resCapacidade").innerHTML = precisa <= c.cabem
+      ? `<span class="ok">A meta cabe na sua agenda.</span>`
+      : `<span class="alerta">A meta pede ${precisa} clientes e cabem ${c.cabem}.</span> Três saídas: subir o preço, reduzir as horas por cliente (processo, IA, escopo) ou ajustar a meta.`;
+  } else {
+    const precoBase = parseFloat(document.getElementById("decisao").value) || c.alvo;
+    document.getElementById("tabCapacidade").innerHTML =
+      `<tr><td>Unidades para a meta de ${brl(v.meta)}</td><td class="num">${Math.ceil(v.meta / precoBase)}</td></tr>` +
+      `<tr><td>Unidades para pagar os custos fixos</td><td class="num">${c.contrib(precoBase) > 0 ? Math.ceil(v.custos_fixos / c.contrib(precoBase)) : "não atinge"}</td></tr>`;
+    document.getElementById("resCapacidade").textContent = "Calculado com o preço decidido ou, se vazio, com o preço-alvo.";
+  }
+
+  document.getElementById("cartaoPacotes").classList.toggle("escondido", !serv);
+  if (serv) {
+    document.getElementById("pacotes").innerHTML = S.pacotes.map((p, i) => {
+      const custo = p.horas * (1 + v.reserva_pct / 100) * c.custoHora + p.custos_diretos;
+      const piso = custo / (1 - c.imp - c.tax), margem = 1 - c.imp - c.tax - custo / p.preco;
+      return `<div class="pacote ${p.recomendado ? "recomendado" : ""}"><div class="selo">${p.recomendado ? "recomendada" : ""}</div>
+        <label>Nome <input data-pac="${i}" data-k="nome" value="${h(p.nome)}"></label>
+        <label>O que inclui <textarea data-pac="${i}" data-k="descricao" rows="3">${h(p.descricao)}</textarea></label>
+        <label>Horas <input type="number" step="0.5" data-pac="${i}" data-k="horas" value="${p.horas}"></label>
+        <label>Custos diretos (R$) <input type="number" step="0.01" data-pac="${i}" data-k="custos_diretos" value="${p.custos_diretos}"></label>
+        <label>Preço (R$) <input type="number" step="0.01" data-pac="${i}" data-k="preco" value="${p.preco}"></label>
+        <div class="linha-res"><span>Piso</span><strong>${brl(piso)}</strong></div>
+        <div class="linha-res"><span>Margem</span><strong>${pct(margem)}</strong></div>
+        ${p.preco < piso ? `<div class="alerta">Este preço fura o piso: tire escopo ou suba o preço.</div>` : `<div class="ok">Acima do piso.</div>`}
+      </div>`;
+    }).join("");
+  }
+}
+
+document.addEventListener("input", e => {
+  const el = e.target;
+  if (el.dataset.campo) { S[S.modo][el.dataset.campo] = parseFloat(el.value) || 0; render(); }
+  else if (el.dataset.pac !== undefined) {
+    const p = S.pacotes[+el.dataset.pac], k = el.dataset.k;
+    p[k] = ["nome", "descricao"].includes(k) ? el.value : (parseFloat(el.value) || 0);
+  }
+  else if (el.id === "teste") render();
+  else if (el.id === "decisao") { S.decisao = el.value; render(); }
+  else if (el.id === "frase") S.frase = el.value;
+});
+document.addEventListener("change", e => {
+  const el = e.target;
+  if (el.dataset.pac !== undefined && !["nome", "descricao"].includes(el.dataset.k)) render();
+});
+document.getElementById("btnVoltar").onclick = () => { S = JSON.parse(JSON.stringify(ORIGINAL)); iniciar(); };
+document.getElementById("btnCopiar").onclick = async () => {
+  const txt = "Atualize 4-precos/simulador.html (bloco <script id=\"dados\">) e 4-precos/precos.md com estes números:\n\n" + JSON.stringify(S, null, 2);
+  try { await navigator.clipboard.writeText(txt); alert("Copiado. Cole no Claude Code para guardar."); }
+  catch (e) { prompt("Copie e cole no Claude Code:", txt); }
+};
+function iniciar() {
+  document.getElementById("decisao").value = S.decisao || "";
+  document.getElementById("frase").value = S.frase || "";
+  montarCampos(); render();
+}
+iniciar();
+</script>
+</body>
+</html>
